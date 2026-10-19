@@ -1,0 +1,22 @@
+{
+    "train": [
+        "logs/lqr_gt_1789775576.csv",
+        "logs/lqr_mrac_gt_1792011611.csv",
+        "logs/lqr_mrac_gt_1792011939.csv",
+        "logs/lqr_mrac_gt_1792012273.csv",
+        "logs/lqr_mrac_gt_1792012478.csv",
+        "logs/lqr_mrac_gt_1792012619.csv",
+        "logs/lqr_mrac_gt_1792012909.csv",
+        "logs/lqr_mrac_gt_1792013082.csv",
+        "logs/lqr_mrac_gt_1792013361.csv"
+    ],
+    "test": [
+        "logs/lqr_mrac_gt_1792014802 (l1).csv",
+        "logs/lqr_mrac_gt_1792014991.csv",
+        "logs/lqr_mrac_gt_1792015162.csv"
+    ],
+    "val": [
+        "logs/lqr_mrac_gt_1792015325.csv",
+        "logs/lqr_mrac_gt_1792018152.csv"
+    ]
+}
