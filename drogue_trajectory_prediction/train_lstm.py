@@ -1,60 +1,69 @@
 import numpy as np
+import importlib
+import json
 import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
-from model import DrogueTrajectoryPredictor
+from utils import rmse_per_horizon_step
 
-# ------------------------- config -------------------------
-DATA_PATH = "drogue_trajectory_prediction/drogue_trajectory_dataset.npz"
-MODEL_PATH = "drogue_trajectory_prediction/drogue_trajectory_lstm.pt"
-HIDDEN = 256          # size of the LSTM memory vector
-LAYERS = 2           # stacked LSTM layers
-DROPOUT = 0.1        # regularization between stacked layers
-RESIDUAL = True      # predict change from the last observed step (usually trains better)
-BATCH = 16
-EPOCHS = 100
-LR = 1e-3
-PATIENCE = 50        # stop if validation loss doesn't improve for this many epochs
+
+# ----------------------------- config ----------------------------- #
+CONFIG_JSON = "drogue_trajectory_prediction/20261021_01_config.json"
+PATIENCE = 20        # stop if validation loss doesn't improve for this many epochs
 SEED = 0
+# ------------------------------------------------------------------ #
+
+with open(CONFIG_JSON, "r") as f:
+    config = json.load(f)
+print(f"[train_lstm] config file: {CONFIG_JSON}")
+print(f"[train_lstm] dataset: {config['lstm']['data_path']}")
+print(f"[train_lstm] model: {config['lstm']['model']['module']}.{config['lstm']['model']['class']}")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(SEED)
 np.random.seed(SEED)
 
-# ------------------------- data -------------------------
-d = np.load(DATA_PATH)
-X_train, Y_train = d["X_train"].astype(np.float32), d["Y_train"].astype(np.float32)
-X_val, Y_val = d["X_val"].astype(np.float32), d["Y_val"].astype(np.float32)
-X_test, Y_test = d["X_test"].astype(np.float32), d["Y_test"].astype(np.float32)
-mean, std = d["mean"].astype(np.float32), d["std"].astype(np.float32)
 
-for name, arr in [("X_train", X_train), ("Y_train", Y_train), ("X_val", X_val),
-                  ("Y_val", Y_val), ("X_test", X_test), ("Y_test", Y_test)]:
+# ----------------------------- load data ----------------------------- #
+d = np.load(config['lstm']['data_path'])
+X_train, Y_train = d['X_train'].astype(np.float32), d['Y_train'].astype(np.float32)
+X_val,   Y_val   = d['X_val'].astype(np.float32),   d['Y_val'].astype(np.float32)
+X_test,  Y_test  = d['X_test'].astype(np.float32),  d['Y_test'].astype(np.float32)
+mean, std = d['mean'].astype(np.float32), d['std'].astype(np.float32)
+
+for name, arr in [("X_train", X_train), ("Y_train", Y_train),
+                  ("X_val", X_val), ("Y_val", Y_val),
+                  ("X_test", X_test), ("Y_test", Y_test)]:
     assert np.isfinite(arr).all(), f"{name} contains NaN or inf"
 
-_, T, IN_DIM = X_train.shape
-_, K, OUT_DIM = Y_train.shape
-print(f"windows: train={len(X_train)} val={len(X_val)} test={len(X_test)} | "
-      f"T={T} K={K} in_dim={IN_DIM} out_dim={OUT_DIM} | device={device}")
-
+print(f"[train_lstm] trajectories: train={len(X_train)} val={len(X_val)} test={len(X_test)} | "
+      f"in_horizon={config['lstm']['in_horizon']} out_horizon={config['lstm']['out_horizon']} "
+      f"in_features={config['lstm']['in_features']} out_features={config['lstm']['out_features']}")
 
 def make_loader(X, Y, shuffle):
     ds = TensorDataset(torch.from_numpy(X), torch.from_numpy(Y))
-    return DataLoader(ds, batch_size=BATCH, shuffle=shuffle)
-
+    return DataLoader(ds, batch_size=config['lstm']['training']['batch'], shuffle=shuffle)
 
 train_loader = make_loader(X_train, Y_train, shuffle=True)   # shuffle only training
 val_loader = make_loader(X_val, Y_val, shuffle=False)
-test_loader = make_loader(X_test, Y_test, shuffle=False)
+# test_loader = make_loader(X_test, Y_test, shuffle=False)
 
-model = DrogueTrajectoryPredictor(IN_DIM, OUT_DIM, K, HIDDEN, LAYERS, DROPOUT, RESIDUAL).to(device)
+
+# ----------------------------- train ----------------------------- #
+module = importlib.import_module(config['lstm']['model']['module'])
+model_class = getattr(module, config['lstm']['model']['class'])
+model = model_class(
+    in_features=config['lstm']['in_features'],
+    out_features=config['lstm']['out_features'],
+    out_horizon=config['lstm']['out_horizon'],
+    lstm_hidden_size=config['lstm']['hidden_size']
+).to(device)
 loss_fn = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.Adam(model.parameters(), lr=config['lstm']['training']['lr'])
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=3)
-print(f"parameters: {sum(p.numel() for p in model.parameters()):,}")
+print(f"[train_lstm] parameters: {sum(p.numel() for p in model.parameters()):,} | device={device}")
 
 
-# ------------------------- training -------------------------
 def run_epoch(loader, train):
     model.train(train)
     total, n = 0.0, 0
@@ -73,11 +82,11 @@ def run_epoch(loader, train):
 
 
 best_val, best_state, bad_epochs = float("inf"), None, 0
-for epoch in range(1, EPOCHS + 1):
+for epoch in range(1, config['lstm']['training']['epochs'] + 1):
     train_loss = run_epoch(train_loader, train=True)
     val_loss = run_epoch(val_loader, train=False)
     scheduler.step(val_loss)
-    print(f"epoch {epoch:3d} | train {train_loss:.5f} | val {val_loss:.5f} | "
+    print(f"[train_lstm] epoch {epoch:3d} | train {train_loss:.5f} | val {val_loss:.5f} | "
           f"lr {optimizer.param_groups[0]['lr']:.1e}")
 
     if val_loss < best_val:
@@ -86,40 +95,47 @@ for epoch in range(1, EPOCHS + 1):
     else:
         bad_epochs += 1
         if bad_epochs >= PATIENCE:
-            print("early stopping")
+            print("[train_lstm] early stopping")
             break
 
 model.load_state_dict(best_state)
-torch.save({"state_dict": best_state,
-            "config": dict(in_dim=IN_DIM, out_dim=OUT_DIM, horizon=K, hidden=HIDDEN,
-                           layers=LAYERS, dropout=DROPOUT, residual=RESIDUAL),
-            "mean": mean, "std": std}, MODEL_PATH)
-print(f"saved best model (val loss {best_val:.5f}) to {MODEL_PATH}")
+# Save config so inference doesn't need to load config.json
+torch.save({"state_dict": best_state, "mean": mean, "std": std, "config": config}, config['lstm']['model_path'])
+print(f"[train_lstm] saved best model (val loss {best_val:.5f}) to {config['lstm']['model_path']}")
 
 
-# ------------------------- test evaluation -------------------------
+# ----------------------------- test ----------------------------- #
 model.eval()
-preds = []
+# preds = []
+# with torch.no_grad():
+#     for xb, _ in test_loader:   # xb: (batch, in_horizon, in_features), target: (batch, out_horizon, out_features)
+#         preds.append(model(xb.to(device)).cpu().numpy())
+# pred = np.concatenate(preds)    # (N, out_horizon, out_features), normalized units
+preds_base, preds_lstm = [], []
 with torch.no_grad():
-    for xb, _ in test_loader:
-        preds.append(model(xb.to(device)).cpu().numpy())
-pred = np.concatenate(preds)                                   # (N, K, out_dim), normalized units
+    for x in X_test:    # x: (in_horizon, in_features)
+        xb = torch.from_numpy(x[np.newaxis, ...]).to(device)   # xb: (batch=1, in_horizon, in_features)
+        preds_base.append(np.tile(mean, (config['lstm']['out_horizon'], 1))[np.newaxis, ...]) # baseline: rigid drogue (predictions are just the mean)
+        preds_lstm.append(model(xb).cpu().numpy())
+preds_base = np.concatenate(preds_base)    # (N, out_horizon, out_features), normalized units
+preds_lstm = np.concatenate(preds_lstm)    # (N, out_horizon, out_features), normalized units
 
-# baseline: rigid drogue (predictions are just the mean)
-# (linear extrapolation is unchanged by normalization, so it can be done here)
-rigid_pred = np.tile(mean, (K, 1))
-baseline = np.tile(rigid_pred, (len(X_test), 1, 1))
+# Convert normalized to original units
+preds_base = preds_base * std + mean
+preds_lstm = preds_lstm * std + mean
+Y_test = Y_test * std + mean
 
+# Compute RMSE per horizon step
+rmse_lstm, rmse_lstm_total = rmse_per_horizon_step(preds_lstm, Y_test)
+rmse_base, rmse_base_total = rmse_per_horizon_step(preds_base, Y_test)
 
-def rmse_per_horizon(p, y):
-    err = (p - y) * std[:OUT_DIM]                              # convert to physical units
-    return np.sqrt((err ** 2).mean(axis=(0, 2)))               # (K,)
-
-
-rmse_lstm = rmse_per_horizon(pred, Y_test)
-rmse_baseline = rmse_per_horizon(baseline, Y_test)
-
-print("\nTest RMSE in physical units (same units as CSV):")
-print(f"{'step':>5} {'LSTM':>10} {'rigid-drogue':>10}")
-for k in sorted(set([1, max(1, K // 4), max(1, K // 2), K])):
-    print(f"{k:5d} {rmse_lstm[k - 1]:10.4f} {rmse_baseline[k - 1]:10.4f}")
+print("\n[train_lstm] Test RMSE (same units as CSV):")
+print("[train_lstm] RMSE (3D):")
+print(f"[train_lstm] {'step':>5} {'LSTM':>15} {'rigid-drogue':>15}")
+for k in sorted(set([1, max(1, config['lstm']['out_horizon'] // 4), max(1, config['lstm']['out_horizon'] // 2), config['lstm']['out_horizon']])):
+    print(f"[train_lstm] {k:5d} {rmse_lstm_total[k - 1]:15.4f} {rmse_base_total[k - 1]:15.4f}")
+print("[train_lstm] RMSE (per x/y/z):")
+print(f"[train_lstm] {'step':>5} {'LSTM':>24} {'rigid-drogue':>24}")
+for k in sorted(set([1, max(1, config['lstm']['out_horizon'] // 4), max(1, config['lstm']['out_horizon'] // 2), config['lstm']['out_horizon']])):
+    print(f"[train_lstm] {k:5d} {rmse_lstm[k - 1, 0]:8.4f} {rmse_lstm[k - 1, 1]:8.4f} {rmse_lstm[k - 1, 2]:8.4f} "
+          f"{rmse_base[k - 1, 0]:8.4f} {rmse_base[k - 1, 1]:8.4f} {rmse_base[k - 1, 2]:8.4f}")

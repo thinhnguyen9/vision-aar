@@ -1,0 +1,83 @@
+{
+    "description"       : "At each t, LSTM receives [p(t-99),...,p(t)] and predicts [p(t+1),...,p(t+10)]. p=[x,y,z] (3 features).",
+    "time_step"         : 0.1,
+    "sampling_interval" : 5,
+    "lstm": {
+        "data_path"     : "drogue_trajectory_prediction/20261021_01_dataset.npz",
+        "model_path"    : "drogue_trajectory_prediction/20261021_01_lstm.pt",
+        "in_horizon"    : 100,
+        "out_horizon"   : 10,
+        "in_features"   : 3,
+        "out_features"  : 3,
+        "hidden_size"   : 32,
+        "model": {
+            "module"    : "models",
+            "class"     : "DrogueLSTM_20261019"
+        },
+        "training": {
+            "epochs"    : 100,
+            "lr"        : 3e-3,
+            "batch"     : 32
+        }
+    },
+    "csv_col_names": {
+        "time"          : "t",
+        "drogue_pos"    : ["sway_dx_m", "sway_dy_m", "sway_dz_m"],
+        "drogue_vel"    : null
+    },
+    "csv_log_path": {
+        "train": [
+            "logs/lqr_gt_1788384040.csv",
+            "logs/lqr_gt_1788384899.csv",
+            "logs/lqr_gt_1788387139.csv",
+            "logs/lqr_gt_1788387770.csv",
+            "logs/lqr_gt_1788388131.csv",
+            "logs/lqr_gt_1788388447.csv",
+            "logs/lqr_gt_1788388987.csv",
+            "logs/lqr_gt_1788400895.csv",
+            "logs/lqr_gt_1788401133.csv",
+            "logs/lqr_gt_1788401259.csv",
+            "logs/lqr_gt_1788401581.csv",
+            "logs/lqr_gt_1788401948.csv",
+            "logs/lqr_gt_1788402256.csv",
+            "logs/lqr_gt_1788402651.csv",
+            "logs/lqr_gt_1788402970.csv",
+            "logs/lqr_gt_1788403562.csv",
+            "logs/lqr_gt_1788403884.csv",
+            "logs/lqr_gt_1788404210.csv",
+            "logs/lqr_gt_1788404493.csv",
+            "logs/lqr_gt_1788404894.csv",
+            "logs/lqr_gt_1788405211.csv",
+            "logs/lqr_gt_1788405484.csv",
+            "logs/lqr_gt_1788405850.csv",
+            "logs/lqr_gt_1788406557.csv",
+            "logs/lqr_gt_1788407565.csv",
+            "logs/lqr_gt_1788409022.csv",
+            "logs/lqr_gt_1788411377.csv",
+            "logs/lqr_gt_1788411574.csv",
+            "logs/lqr_gt_1788411785.csv",
+            "logs/lqr_gt_1788412110.csv",
+            "logs/lqr_gt_1788412380.csv",
+            "logs/lqr_gt_1788467697.csv",
+            "logs/lqr_gt_1788468735.csv"
+        ],
+        "val": [
+            "logs/lqr_gt_1788468911.csv",
+            "logs/lqr_gt_1788469271.csv",
+            "logs/lqr_gt_1788469639.csv",
+            "logs/lqr_gt_1788475914.csv",
+            "logs/lqr_gt_1788476133.csv",
+            "logs/lqr_gt_1789769333.csv",
+            "logs/lqr_gt_1789769555.csv"
+        ],
+        "test": [
+            "logs/lqr_gt_1789769776.csv",
+            "logs/lqr_gt_1789770986.csv",
+            "logs/lqr_gt_1789772303.csv",
+            "logs/lqr_gt_1789772748.csv",
+            "logs/lqr_gt_1789774960.csv",
+            "logs/lqr_gt_1789775331.csv",
+            "logs/lqr_gt_1789775576.csv"
+        ]
+    }
+}
