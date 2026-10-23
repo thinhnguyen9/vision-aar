@@ -8,7 +8,7 @@ from utils import rmse_per_horizon_step
 
 
 # ----------------------------- config ----------------------------- #
-CONFIG_JSON = "drogue_trajectory_prediction/20261021_01_config.json"
+CONFIG_JSON = "drogue_trajectory_prediction/20261023_01_config.json"
 PATIENCE = 20        # stop if validation loss doesn't improve for this many epochs
 SEED = 0
 # ------------------------------------------------------------------ #

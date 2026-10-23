@@ -9,7 +9,7 @@ from utils import resample_csv_log, make_data_windows, rmse_per_horizon_step, Dr
 
 
 # ----------------------------- config ----------------------------- #
-CONFIG_JSON = "drogue_trajectory_prediction/20261021_01_config.json"
+CONFIG_JSON = "drogue_trajectory_prediction/20261023_01_config.json"
 CSV_LOG_PATH = "logs/lqr_gt_1789769555.csv"
 # ------------------------------------------------------------------ #
 
@@ -17,9 +17,13 @@ with open(CONFIG_JSON, "r") as f:
     config = json.load(f)
 AXIS_NAMES = ['x', 'y', 'z']
 CONFIG_NAME = Path(CONFIG_JSON).stem
-PREDICTIONS_FIGURE_PATH = f"drogue_trajectory_prediction/{CONFIG_NAME}_predictions.png"
-RMSE_FIGURE_PATH = f"drogue_trajectory_prediction/{CONFIG_NAME}_rmse.png"
+PREDICTIONS_FIGURE_PATH = f"drogue_trajectory_prediction/images/{CONFIG_NAME}_predictions.png"
+RMSE_FIGURE_PATH = f"drogue_trajectory_prediction/images/{CONFIG_NAME}_rmse.png"
 PLOT_PREDICTION_EVERY = config['lstm']['out_horizon']
+
+print(f"[test_lstm] config file: {CONFIG_JSON}")
+print(f"[test_lstm] model: {config['lstm']['model_path']}")
+print(f"[test_lstm] CSV log to test: {CSV_LOG_PATH}")
 
 # ------------------------- load model ------------------------- #
 predictor_lstm = DrogueTrajectoryPredictor(

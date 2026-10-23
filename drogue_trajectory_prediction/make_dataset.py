@@ -3,13 +3,14 @@ import json
 from utils import resample_csv_log, make_data_windows
 
 # ----------------------------- config ----------------------------- #
-CONFIG_JSON = "drogue_trajectory_prediction/20261021_01_config.json"
+CONFIG_JSON = "drogue_trajectory_prediction/20261023_01_config.json"
 # ------------------------------------------------------------------ #
 
 
 def main():
 
     # Load configs
+    print(f"[make_dataset] Using config: {CONFIG_JSON}")
     with open(CONFIG_JSON, "r") as f:
         config = json.load(f)
 

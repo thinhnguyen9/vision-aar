@@ -3,8 +3,8 @@
     "time_step"         : 0.1,
     "sampling_interval" : 5,
     "lstm": {
-        "data_path"     : "drogue_trajectory_prediction/20261021_01_dataset.npz",
-        "model_path"    : "drogue_trajectory_prediction/20261021_01_lstm.pt",
+        "data_path"     : "drogue_trajectory_prediction/dataset/20261021_01_dataset.npz",
+        "model_path"    : "drogue_trajectory_prediction/weights/20261021_01_lstm.pt",
         "in_horizon"    : 100,
         "out_horizon"   : 10,
         "in_features"   : 3,
