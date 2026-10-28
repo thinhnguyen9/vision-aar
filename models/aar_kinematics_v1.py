@@ -1,7 +1,7 @@
 import numpy as np
 import casadi as ca
-from dynamical_system import DynamicalSystem
-from utils import *
+from .dynamical_system import DynamicalSystem
+from .utils import *
 
 
 class AAR_Kinematics_v1(DynamicalSystem):

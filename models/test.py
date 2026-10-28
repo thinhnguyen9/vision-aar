@@ -1,4 +1,8 @@
-from aar_kinematics_v1 import AAR_Kinematics_v1
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from models import AAR_Kinematics_v1
 # from aar_dynamics_old import AAR_relative_distance_model_v2
 import numpy as np
 
